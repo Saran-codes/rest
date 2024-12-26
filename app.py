@@ -1,30 +1,32 @@
 from flask import Flask, request, jsonify
+import datetime
 
 app = Flask(__name__)
 
-# Simple in-memory storage for recipes
+# In-memory "database" for recipes
 recipes = {}
+recipe_counter = 1  # For generating unique IDs
 
-# Counter for generating recipe IDs
-recipe_counter = 1
-
+# Utility function to get current timestamp
+def get_current_timestamp():
+    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 @app.route('/recipes', methods=['POST'])
 def create_recipe():
     global recipe_counter
     data = request.get_json()
 
-    # Required fields
+    # Required fields in the body
     required_fields = ['title', 'making_time', 'serves', 'ingredients', 'cost']
     
-    # Check if all required fields are provided
+    # Validate if all required fields are provided
     if not all(field in data for field in required_fields):
         return jsonify({
             "message": "Recipe creation failed!",
-            "required": required_fields
-        }), 400
+            "required": "title, making_time, serves, ingredients, cost"
+        }), 404
 
-    # Create a new recipe entry
+    # Create recipe
     recipe = {
         "id": recipe_counter,
         "title": data['title'],
@@ -32,20 +34,23 @@ def create_recipe():
         "serves": data['serves'],
         "ingredients": data['ingredients'],
         "cost": data['cost'],
-        "created_at": "2024-12-26 10:00:00",  # Example timestamp
-        "updated_at": "2024-12-26 10:00:00"
+        "created_at": get_current_timestamp(),
+        "updated_at": get_current_timestamp()
     }
+
+    # Store the recipe
     recipes[recipe_counter] = recipe
     recipe_counter += 1
 
     return jsonify({
         "message": "Recipe successfully created!",
-        "recipe": recipe
+        "recipe": [recipe]
     }), 200
 
 
 @app.route('/recipes', methods=['GET'])
 def get_all_recipes():
+    # Return the list of all recipes
     return jsonify({
         "recipes": list(recipes.values())
     }), 200
@@ -55,8 +60,8 @@ def get_all_recipes():
 def get_recipe(id):
     recipe = recipes.get(id)
     if not recipe:
-        return jsonify({"message": "Recipe not found!"}), 404
-
+        return jsonify({"message": "No recipe found"}), 404
+    
     return jsonify({
         "message": "Recipe details by id",
         "recipe": [recipe]
@@ -67,16 +72,16 @@ def get_recipe(id):
 def update_recipe(id):
     recipe = recipes.get(id)
     if not recipe:
-        return jsonify({"message": "Recipe not found!"}), 404
+        return jsonify({"message": "No recipe found"}), 404
 
     data = request.get_json()
 
-    # Update fields if provided
+    # Update recipe fields if they are provided
     for key, value in data.items():
         if key in recipe:
             recipe[key] = value
 
-    recipe["updated_at"] = "2024-12-26 12:00:00"  # Example updated timestamp
+    recipe["updated_at"] = get_current_timestamp()
 
     return jsonify({
         "message": "Recipe successfully updated!",
